@@ -2,7 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
-import dns from "dns"; 
+import dns from "dns";
 import { promisify } from "util";
 
 // Transformation de la fonction DNS en version "Async/Await"
@@ -24,13 +24,13 @@ export const register = async (req, res) => {
         try {
             const mxRecords = await resolveMx(domain);
             if (!mxRecords || mxRecords.length === 0) {
-                return res.status(400).json({ 
-                    error: `Le domaine @${domain} ne peut pas recevoir d'emails.` 
+                return res.status(400).json({
+                    error: `Le domaine @${domain} ne peut pas recevoir d'emails.`
                 });
             }
         } catch (dnsErr) {
-            return res.status(400).json({ 
-                error: `L'email est invalide : le domaine @${domain} est introuvable.` 
+            return res.status(400).json({
+                error: `L'email est invalide : le domaine @${domain} est introuvable.`
             });
         }
 
@@ -42,10 +42,9 @@ export const register = async (req, res) => {
 
         // 4. Hachage du mot de passe et OTP
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = Date.now() + 10 * 60 * 1000; 
+        const otpExpires = Date.now() + 10 * 60 * 1000;
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 5. Création temporaire de l'utilisateur
         const user = await User.create({
             name,
             email,
@@ -55,37 +54,20 @@ export const register = async (req, res) => {
             otpExpires
         });
 
-        // 6. Envoi de l'email
-        try {
-            const messageHtml = `
-                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                    <h2 style="color: #7c3aed;">Code d'activation</h2>
-                    <p>Bonjour <b>${name}</b>,</p>
-                    <p>Votre code pour le Compagnon du Carême est :</p>
-                    <div style="font-size: 24px; font-weight: bold; color: #4f46e5; margin: 10px 0;">${otpCode}</div>
-                    <p style="font-size: 12px; color: #666;">Ce code expire dans 10 minutes.</p>
-                </div>`;
+        const messageHtml = `
+            <div style="font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #7c3aed;">Code de vérification</h2>
+                <p>Bonjour <b>${name}</b>,</p>
+                <p>Votre code est : <b style="font-size: 24px;">${otpCode}</b></p>
+            </div>`;
 
-            await sendEmail({
-                email: user.email,
-                subject: "Activez votre compte - Compagnon du Carême",
-                html: messageHtml
-            });
+        await sendEmail({
+            email: user.email,
+            subject: "Activation de compte",
+            html: messageHtml
+        });
 
-            res.status(201).json({ 
-                message: "Utilisateur créé. Vérifiez votre boîte mail.", 
-                email: user.email 
-            });
-
-        } catch (emailError) {
-            // Rollback : On supprime l'utilisateur si le mail ne part pas
-            await User.findByIdAndDelete(user._id);
-            console.error("Erreur SMTP:", emailError);
-            return res.status(400).json({ 
-                error: "Échec de l'envoi de l'email. Vérifiez votre adresse." 
-            });
-        }
-
+        res.status(201).json({ message: "Code OTP envoyé par mail.", email: user.email });
     } catch (err) {
         res.status(500).json({ error: "Erreur serveur : " + err.message });
     }
@@ -143,7 +125,7 @@ export const verifyOTP = async (req, res) => {
 export const updatePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-        const userId = req.user.id; 
+        const userId = req.user.id;
 
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ error: "Utilisateur non trouvé" });
