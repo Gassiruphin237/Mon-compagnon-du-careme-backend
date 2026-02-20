@@ -58,6 +58,7 @@ export const verifyOTP = async (req, res) => {
 // INSCRIPTION
 export const register = async (req, res) => {
     const { name, email, phone, password } = req.body;
+
     try {
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -68,28 +69,40 @@ export const register = async (req, res) => {
         const otpExpires = Date.now() + 10 * 60 * 1000; 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // 1. On crée l'utilisateur en base de données
         const user = await User.create({
             name, email, phone,
             password: hashedPassword,
             otpCode, otpExpires
         });
 
-        const messageHtml = `
+        // 2. On tente d'envoyer l'email
+        try {
+            const messageHtml = `
             <div style="font-family: Arial; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <h2 style="color: #7c3aed;">Code de vérification</h2>
                 <p>Bonjour <b>${name}</b>,</p>
                 <p>Votre code est : <b style="font-size: 24px;">${otpCode}</b></p>
             </div>`;
+            await sendEmail({
+                email: user.email,
+                subject: "Activation de compte",
+                html: messageHtml
+            });
 
-        await sendEmail({
-            email: user.email,
-            subject: "Activation de compte",
-            html: messageHtml
-        });
+            res.status(201).json({ message: "Code OTP envoyé.", email: user.email });
 
-        res.status(201).json({ message: "Code OTP envoyé par mail.", email: user.email });
+        } catch (emailError) {
+            await User.findByIdAndDelete(user._id);
+            
+            console.error("Erreur SMTP:", emailError);
+            return res.status(400).json({ 
+                error: "L'envoi de l'email a échoué. Vérifiez que l'adresse email est correcte ou existe réellement." 
+            });
+        }
+
     } catch (err) {
-        res.status(500).json({ error: "Erreur lors de l'inscription : " + err.message });
+        res.status(500).json({ error: "Erreur serveur : " + err.message });
     }
 };
 
