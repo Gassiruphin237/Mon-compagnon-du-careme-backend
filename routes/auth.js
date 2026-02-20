@@ -1,12 +1,14 @@
 import express from "express";
 import { register, login, verifyOTP,updateUser } from "../controllers/authController.js";
 import { updatePassword } from "../controllers/authController.js";
+import { deleteAccount } from "../controllers/userController.js";
 import { protect } from "../middleware/authMiddleware.js"; 
 const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
 router.put('/update-profile', protect, updateUser);
+router.delete("/delete-account", protect, deleteAccount);
 router.put("/update-password", protect, updatePassword);
 router.post("/verify-otp", verifyOTP);
 
