@@ -19,7 +19,6 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Autorise les requêtes sans origine (comme Postman) ou les origines dans la liste
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -31,7 +30,8 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions)); // On applique le CORS avant les routes
+app.use(cors(corsOptions)); 
+
 app.use(express.json());
 
 // Routes
